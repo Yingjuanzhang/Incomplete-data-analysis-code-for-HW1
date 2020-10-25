@@ -1,0 +1,192 @@
+---
+title: "Question 3, Question 4"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+```{r}
+##Question3 (a)
+require(MASS)
+set.seed(1)
+n <- 500
+mu1 <- 1
+mu2 <- 5
+sigma1 <- 1
+sigma2 <- sqrt(5)
+rho <- 0
+Sigma <- matrix(c(sigma1^2, rho * sigma1 * sigma2, rho * sigma1 * sigma2, sigma2^2),
+                2, 2, byrow = T)
+# simulate a complete dataset of size 500 on Y=(Y1,Y2).
+Y <- mvrnorm(n, mu = c(mu1, mu2), Sigma = Sigma)
+Y[1:500, ]
+Y1 <- Y[,1]
+Y2 <- Y[,2]
+```
+
+```{r}
+##continue with Question 3 (a)
+#simulating the corresponding observed dataset(by imposing missingness on Y2 as instructed above)
+Z3 <- rnorm(500, mean = 0, sd = 1)
+Y2_MAR_obs <- Y2[Y1 > (2 - Z3)/2]
+Y2_MAR_mis <- Y2[Y1 < (2 - Z3)/2]
+Y2_MAR_obs[]
+#display the marginal distribution of Y2 for the complete and observed data
+plot(density(Y2), lwd = 2, col = "blue", xlab = expression(Y[2]), main = "MAR", ylim = c(0, 0.3))
+lines(density(Y2_MAR_obs), lwd = 2, col = "red")
+#lines(density(Y2_MAR_mis), lwd = 2, col = "darkgreen")
+legend(1, 0.3, legend = c("Complete data", "Observed data"),
+col = c("blue", "red", "darkgreen"), lty = c(1,1,1), lwd = c(2,2,2), bty ="n")
+```
+(a) commit: The blue curve is for complete data and the red curve is for observed data. This is MAR mechanism.
+
+
+
+```{r}
+##Question 3 (b)
+library(mice)
+Y1 <- round(Y[,1])
+Y2_new <- round(Y[,2])
+Y3 <- Y1< (2-Z3)/2 # TRUE=missing values
+#new Y2 with observed values and replaced missing value with NA
+Y2_new[Y2_new == Y3] <- NA 
+set.seed(500)
+data <- data.frame(Y1,Y2_new)
+fit <- lm(formula = Y1 ~Y2_new, data = data)
+# Stochastic regression imputation, change to method = “norm.nob”.
+Y2_new <- mice(data, method = "norm.nob", m = 1) # Impute data
+data_sri <- complete(Y2_new)
+data_sri[]
+
+plot(density(Y2_MAR_obs), lwd = 2, col = "blue", xlab = "Y2", 
+     main = "using stochastic regression imputation", ylim =c(0, 0.25))
+lines(density(data_sri$Y2), lwd = 2, col = "red")
+legend(145, 0.25, legend = c("Complete data", "after stochastic regression"), 
+       col=c("blue","red"),lty = c(1, 1, 1),lwd = c(2, 2, 2), bty = "n")
+#the blue curve is originally simulated; the red curve is after imputation
+```
+(b)commit: For stochastic regression imputation, we will add noise to the predictions obtained using the regression imputation method. The curves for the marginal distribution of Y2 for the complete data after imputation and for the complete data as originally simulated as basically the same.
+
+
+
+```{r}
+##Question 3 (c)
+Y2_MNAR_obs <- Y2[Y2 > (10 - Z3)/2]
+Y2_MNAR_mis <- Y2[Y2 < (10 - Z3)/2]
+Y2_MNAR_obs[]
+#display the marginal distribution of Y2 for the complete and observed data
+plot(density(Y2), lwd = 2, col = "blue", xlab = expression(Y[2]), main = "MNAR", ylim = c(0, 0.5))
+lines(density(Y2_MNAR_obs), lwd = 2, col = "red")
+legend(1, 0.5, legend = c("Complete data", "Observed data"),
+col = c("blue", "red", "darkgreen"), lty = c(1,1,1), lwd = c(2,2,2), bty ="n")
+```
+(c) commit:The blue curve is for complete data and the red curve is for observed data. This is MNAR mechanism. These two distributions become more distinct than in MAR mechanism.
+
+```{r}
+##Question 3 (d)
+library(mice) 
+set.seed(500)
+Y1 <- round(Y[,1])
+Y2 <- round(Y[,2])
+Y3 <- Y2 < (10 - Z3)/2  # TRUE=missing values
+#new Y2 with observed values and replaced missing value with NA
+Y2[Y2 == Y3] <- NA  
+set.seed(500)
+## Stochastic regression imputation, change to method = “norm.nob”.
+Y2 <- mice(data, method = "norm.nob", m = 1) # Impute data
+data_sri <- complete(Y2) 
+data_sri[]
+
+plot(density(Y2_MNAR_obs), lwd = 2, col = "green", xlab = "Y2", 
+     main = "using stochastic regression imputation", ylim =c(0, 0.35),)
+lines(density(data_sri$Y2), lwd = 2, col = "yellow")
+legend(145, 0.35, legend = c("Complete data", "after stochastic regression"), 
+       col = c("green","yellow"), lty = c(1, 1, 1), lwd = c(2, 2, 2), bty = "n")
+#the green curve is originally simulated; the yellow curve is after imputation.
+```
+```{r}
+##Question 4 (a)
+#the mean value of the recovery time by using a complete case analysis
+isfar<-load("~/downloads/databp.RData")
+databp <- databp
+mean(databp$recovtime, na.rm = TRUE)
+#correlation between the recovery time and the dose
+cor(databp$recovtime, databp$logdose, use = "complete")
+#correlation between the recovery time and the blood pressure
+cor(databp$recovtime, databp$bloodp, use = "complete")
+```
+
+```{r}
+##Question 4 (b)
+#the same  as in (a) using mean imputation
+round(mean(databp$recovtime, na.rm = TRUE))
+recovtime_mi <- ifelse(is.na(databp$recovtime), 19, databp$recovtime)
+#the mean value of the recovery time by using mean imputation
+mean(recovtime_mi)
+##correlation between the recovery time and the dose using mean imputation
+cor(recovtime_mi, databp$logdose)
+#correlation between the recovery time and the blood pressure using mean imputation
+cor(recovtime_mi, databp$bloodp)
+```
+
+```{r}
+##Question 4 (c)
+#the same  as in (a) using mean regression imputation
+fit1 <- lm(databp$recovtime ~ databp$logdose, data = databp)
+predicted_ri1 <- predict(fit1, newdata = databp)
+recovtime_ri1 <- ifelse(is.na(databp$recovtime), predicted_ri1, databp$recovtime)
+#the mean value of the recovery time by using mean regression imputation
+mean(recovtime_ri1)
+##correlation between the recovery time and the dose using mean regression imputation
+cor(recovtime_ri1, databp$logdose)
+#correlation between the recovery time and the blood pressure using mean regression imputation
+fit2 <- lm(databp$recovtime ~ databp$bloodp, data = databp)
+predicted_ri2 <- predict(fit2, newdata = databp)
+recovtime_ri <- ifelse(is.na(databp$recovtime), predicted_ri2, databp$recovtime)
+mean(recovtime_ri)
+cor(recovtime_ri, databp$bloodp)
+```
+
+```{r}
+##Question 4 (d)
+#using stochastic regression imputation bewteen recovery time and dose to find mean of recovery time and correlation
+set.seed(25)
+fit1 <- lm(databp$recovtime ~ databp$logdose, data = databp)
+predicted_sri1 <- predict(fit1, newdatabp1 = data) + rnorm(nrow(databp), 0, sigma(fit1))
+recovtime_sri1 <- ifelse(is.na(databp$recovtime), predicted_sri1,
+databp$recovtime)
+mean(recovtime_sri1)
+cor(recovtime_sri1, databp$logdose)
+#using stochastic regression imputation between recovery time and blood pressureto find mean of recovery time and correlation
+fit2 <- lm(databp$recovtime ~ databp$logdose, data = databp)
+predicted_sri2 <- predict(fit2, newdatabp = data) + rnorm(nrow(databp), 0, sigma(fit2))
+recovtime_sri2 <- ifelse(is.na(databp$recovtime), predicted_sri2, databp$recovtime)
+mean(recovtime_sri2)
+cor(recovtime_sri2, databp$bloodp)
+```
+#Extra care needed for finding correlation between recovery time and dose and between recovery time and blood pressure, we need to build two different lm functions and the mean value of recovery time will also be different.Also we will get an error of "longer object length is not a multiple of shorter object length".
+
+```{r}
+##Question 4 (e)
+ind_donors_1 <- which(is.na(databp$recovtime) == FALSE)
+set.seed(1)
+donor4 <- sample(x = ind_donors_1, size = 1)
+donor10 <- sample(x = ind_donors_1, size = 1)
+donor22 <- sample(x = ind_donors_1, size = 1)
+recovetime_hotdeck <- c(databp$recovtime[1:3], databp$recovtime[donor4], 
+                        databp$recovtime[5:9], databp$recovtime[donor10], 
+                        databp$recovtime[11:21], databp$recovtime[donor22], 
+                        databp$recovtime[23:25])
+recovetime_hotdeck
+mean(recovetime_hotdeck)
+cor(recovetime_hotdeck, databp$logdose)
+cor(recovetime_hotdeck, databp$bloodp)
+```
+
+##Question 4 (f)
+Imputations are based on values observed elsewhere, so they are realistic. Imputations outside the observed data range will not occur, thus evading problems with meaningless imputations. The model is implicit, which means that there is no need to define an explicit model for the distribution of the missing values.Because of this, predictive mean matching is less vulnerable to model misspecification than the stochastic regression imputation method.
+
+Potential problem of predictive mean matching: The method works best with large samples, and provides imputations that possess many characteristics of the complete data. Predictive mean matching cannot be used to extrapolate beyond the range of the data, or to interpolate within the range of the data if the data at the interior are sparse. Also, it may not perform well with small datasets.
+
